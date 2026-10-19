@@ -1,0 +1,109 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+@font-face {
+  font-display: swap;
+  font-family: "Reels Pixel";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/Tiny5-Regular.ttf") format("truetype");
+}
+
+.react-hud-container,
+.react-hud-container * {
+  box-sizing: border-box;
+}
+
+.reels-control-panel {
+  align-items: stretch;
+  background: rgba(18, 18, 20, 0.76);
+  backdrop-filter: blur(10px) saturate(145%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.34);
+  display: flex;
+  flex-direction: column;
+  left: 12px;
+  padding: 6px 10px;
+  pointer-events: auto;
+  position: absolute;
+  /* Keep Instagram's native bottom-right sound toggle visible and clickable. */
+  right: 72px;
+  touch-action: manipulation;
+}
+
+.reels-seek-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.reels-time {
+  color: rgba(255, 255, 255, 0.84);
+  flex-shrink: 0;
+  font-family: "Reels Pixel", monospace;
+  font-size: 16px;
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  min-width: 32px;
+}
+
+.reels-seek-track {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  height: 20px;
+  pointer-events: auto;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  width: 100%;
+}
+
+.reels-seek-track.is-disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.reels-seek-track::before {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  content: "";
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.reels-seek-fill {
+  background: rgba(209, 213, 219, 0.95);
+  border-radius: 999px;
+  height: 3px;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.reels-seek-thumb {
+  background: rgb(209, 213, 219);
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  height: 16px;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 16px;
+}
+
+@media (max-width: 360px) {
+  .reels-control-panel {
+    left: 6px;
+    padding-inline: 7px;
+    right: 56px;
+  }
+
+}
