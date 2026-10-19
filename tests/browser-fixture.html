@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reels Control browser fixture</title>
+    <link rel="stylesheet" href="../public/content.css">
+    <style>
+      html, body { height: 1800px; margin: 0; width: 800px; }
+      video { background: #222; height: 500px; left: 100px; position: absolute; width: 600px; }
+      #active { top: 20px; }
+      #preload { top: 560px; }
+    </style>
+    <script>
+      (() => {
+        const values = {
+          autoScroll: false,
+          hudEnabled: true,
+          hotkeysEnabled: true,
+          useNativeControls: false,
+          defaultSpeed: 1,
+          defaultVolume: 0.8,
+          isMuted: false,
+        };
+        const listeners = new Set();
+        const mockChrome = {
+          runtime: { id: "browser-fixture", lastError: undefined },
+          storage: {
+            local: {
+              get(defaults, callback) { callback({ ...defaults, ...values }); },
+              set(patch, callback) {
+                const changes = {};
+                for (const [key, value] of Object.entries(patch)) {
+                  changes[key] = { oldValue: values[key], newValue: value };
+                  values[key] = value;
+                }
+                listeners.forEach((listener) => listener(changes, "local"));
+                callback?.();
+              },
+            },
+            onChanged: {
+              addListener(listener) { listeners.add(listener); },
+              removeListener(listener) { listeners.delete(listener); },
+            },
+          },
+        };
+        Object.defineProperty(window, "chrome", { value: mockChrome, configurable: true });
+      })();
+    </script>
+  </head>
+  <body>
+    <video id="active"></video>
+    <video id="preload"></video>
+    <script>
+      function prepareVideo(video) {
+        const state = { paused: true, ended: false, currentTime: 10, playCalls: 0, pauseCalls: 0 };
+        Object.defineProperties(video, {
+          paused: { configurable: true, get: () => state.paused },
+          ended: { configurable: true, get: () => state.ended },
+          duration: { configurable: true, get: () => 100 },
+          currentTime: {
+            configurable: true,
+            get: () => state.currentTime,
+            set: (value) => { state.currentTime = value; },
+          },
+          seekable: {
+            configurable: true,
+            get: () => ({ length: 1, start: () => 0, end: () => 100 }),
+          },
+          play: {
+            configurable: true,
+            value: () => {
+              state.playCalls += 1;
+              state.paused = false;
+              video.dispatchEvent(new Event("play"));
+              return Promise.resolve();
+            },
+          },
+          pause: {
+            configurable: true,
+            value: () => {
+              state.pauseCalls += 1;
+              state.paused = true;
+              video.dispatchEvent(new Event("pause"));
+            },
+          },
+        });
+        return state;
+      }
+
+      window.fixtureStates = {
+        active: prepareVideo(document.querySelector("#active")),
+        preload: prepareVideo(document.querySelector("#preload")),
+      };
+    </script>
+    <script src="../public/content.js"></script>
+    <script>
+      setTimeout(() => {
+        const initialHud = Boolean(document.querySelector(".reels-control-panel"));
+        const firstSpace = new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          code: "Space",
+          key: " ",
+        });
+        document.dispatchEvent(firstSpace);
+        document.dispatchEvent(new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          code: "ArrowRight",
+          key: "ArrowRight",
+        }));
+
+        const active = document.querySelector("#active");
+        active.style.top = "900px";
+        const dynamic = document.createElement("video");
+        dynamic.id = "dynamic";
+        dynamic.style.top = "20px";
+        const dynamicState = prepareVideo(dynamic);
+        window.fixtureStates.dynamic = dynamicState;
+        document.body.appendChild(dynamic);
+
+        setTimeout(() => {
+          const dynamicSpace = new KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            code: "Space",
+            key: " ",
+          });
+          document.dispatchEvent(dynamicSpace);
+          chrome.storage.local.set({ defaultSpeed: 1.5 });
+
+          const duplicateScript = document.createElement("script");
+          duplicateScript.src = "../public/content.js";
+          duplicateScript.onload = () => setTimeout(async () => {
+            await document.fonts.ready;
+            const timeLabel = document.querySelector(".reels-time");
+            const result = {
+              initialHud,
+              activePlayed: !window.fixtureStates.active.paused,
+              activeSeek: window.fixtureStates.active.currentTime,
+              dynamicPlayed: !dynamicState.paused,
+              activePlayCalls: window.fixtureStates.active.playCalls,
+              activePauseCalls: window.fixtureStates.active.pauseCalls,
+              dynamicPlayCalls: dynamicState.playCalls,
+              dynamicPauseCalls: dynamicState.pauseCalls,
+              firstSpacePrevented: firstSpace.defaultPrevented,
+              dynamicSpacePrevented: dynamicSpace.defaultPrevented,
+              speedApplied: dynamic.playbackRate,
+              rootCount: document.querySelectorAll("[data-instagram-reels-control-root]").length,
+              panelCount: document.querySelectorAll(".reels-control-panel").length,
+              actionsRemoved: document.querySelector(".reels-control-actions") === null,
+              pixelFont: timeLabel ? getComputedStyle(timeLabel).fontFamily : "",
+              pixelFontLoaded: document.fonts.check('16px "Reels Pixel"'),
+              soundToggleClearance: Math.round(
+                dynamic.getBoundingClientRect().right -
+                  document.querySelector(".reels-control-panel").getBoundingClientRect().right,
+              ),
+            };
+            document.body.dataset.testStatus = Object.values({
+              initialHud: result.initialHud,
+              activePlayed: result.activePlayed,
+              activeSeek: result.activeSeek === 15,
+              dynamicPlayed: result.dynamicPlayed,
+              speedApplied: result.speedApplied === 1.5,
+              rootCount: result.rootCount === 1,
+              panelCount: result.panelCount === 1,
+              actionsRemoved: result.actionsRemoved,
+              pixelFont: result.pixelFont.includes("Reels Pixel"),
+              pixelFontLoaded: result.pixelFontLoaded,
+              soundToggleClearance: result.soundToggleClearance >= 56,
+            }).every(Boolean) ? "pass" : "fail";
+            document.body.dataset.testResult = encodeURIComponent(JSON.stringify(result));
+          }, 450);
+          document.body.appendChild(duplicateScript);
+        }, 500);
+      }, 500);
+    </script>
+  </body>
+</html>
